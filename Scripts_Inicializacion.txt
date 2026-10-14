@@ -1,0 +1,954 @@
+/* CONEXION A LA BASE DE DATOS */
+mongosh "mongodb+srv://universidadnovacluster.zos8lsb.mongodb.net/" --apiVersion 1 --username <username>
+
+/* SELECCIONAR BASE DE DATOS */
+use UniversidadNovaRAG
+
+/* CREAR LAS COLECCIONES */
+db.createCollection("facultades", {
+validator: {
+    $jsonSchema: {
+    bsonType: "object",
+    required: ["codigo", "nombre", "estado"],
+    properties: {
+        codigo: { bsonType: "string" },
+        nombre: { bsonType: "string" },
+        descripcion: { bsonType: "string" },
+        estado: {
+        enum: ["activo", "inactivo"]
+        }
+    }
+    }
+},
+validationLevel: "strict",
+validationAction: "error"
+});
+
+db.createCollection("programas", {
+validator: {
+    $jsonSchema: {
+    bsonType: "object",
+    required: [
+        "codigo", "nombre", "nivel",
+        "duracion_semestres", "facultad_id", "estado"
+    ],
+    properties: {
+        codigo: { bsonType: "string" },
+        nombre: { bsonType: "string" },
+        nivel: {
+        enum: ["pregrado", "posgrado"]
+        },
+        duracion_semestres: {
+        bsonType: ["int", "long"],
+        minimum: 1
+        },
+        facultad_id: { bsonType: "objectId" },
+        estado: {
+        enum: ["activo", "inactivo"]
+        }
+    }
+    }
+},
+validationLevel: "strict",
+validationAction: "error"
+});
+
+db.createCollection("planes_estudio", {
+validator: {
+    $jsonSchema: {
+    bsonType: "object",
+    required: [
+        "programa_id", "version",
+        "fecha_inicio_vigencia", "total_creditos", "niveles"
+    ],
+    properties: {
+        programa_id: { bsonType: "objectId" },
+        version: { bsonType: "string" },
+        fecha_inicio_vigencia: { bsonType: "date" },
+        fecha_fin_vigencia: { bsonType: "date" },
+        total_creditos: {
+        bsonType: ["int", "long"],
+        minimum: 1
+        },
+        niveles: {
+        bsonType: "array",
+        items: {
+            bsonType: "object",
+            required: ["semestre", "asignaturas"],
+            properties: {
+            semestre: {
+                bsonType: ["int", "long"],
+                minimum: 1
+            },
+            asignaturas: {
+                bsonType: "array",
+                items: {
+                bsonType: "object",
+                required: ["asignatura_id", "creditos"],
+                properties: {
+                    asignatura_id: { bsonType: "objectId" },
+                    creditos: {
+                    bsonType: ["int", "long"],
+                    minimum: 1
+                    }
+                }
+                }
+            }
+            }
+        }
+        }
+    }
+    }
+},
+validationLevel: "strict",
+validationAction: "error"
+});
+
+db.createCollection("asignaturas", {
+validator: {
+    $jsonSchema: {
+    bsonType: "object",
+    required: [
+        "codigo", "nombre", "creditos",
+        "prerrequisitos", "estado"
+    ],
+    properties: {
+        codigo: { bsonType: "string" },
+        nombre: { bsonType: "string" },
+        creditos: {
+        bsonType: ["int", "long"],
+        minimum: 1
+        },
+        descripcion: { bsonType: "string" },
+        prerrequisitos: {
+        bsonType: "array",
+        items: { bsonType: "objectId" }
+        },
+        estado: {
+        enum: ["activo", "inactivo"]
+        }
+    }
+    }
+},
+validationLevel: "strict",
+validationAction: "error"
+});
+
+db.createCollection("estudiantes", {
+validator: {
+    $jsonSchema: {
+    bsonType: "object",
+    required: [
+        "codigo_estudiante", "nombre",
+        "correo", "programa_id", "estado"
+    ],
+    properties: {
+        codigo_estudiante: { bsonType: "string" },
+        nombre: { bsonType: "string" },
+        correo: { bsonType: "string" },
+        programa_id: { bsonType: "objectId" },
+        estado: {
+        enum: ["activo", "inactivo"]
+        },
+        contacto: {
+        bsonType: "object",
+        properties: {
+            telefono: { bsonType: "string" },
+            ciudad: { bsonType: "string" }
+        }
+        }
+    }
+    }
+},
+validationLevel: "strict",
+validationAction: "error"
+});
+
+db.createCollection("docentes", {
+validator: {
+    $jsonSchema: {
+    bsonType: "object",
+    required: ["codigo", "nombre", "correo", "area", "estado"],
+    properties: {
+        codigo: { bsonType: "string" },
+        nombre: { bsonType: "string" },
+        correo: { bsonType: "string" },
+        area: { bsonType: "string" },
+        estado: {
+        bsonType: "string",
+        enum: ["activo", "inactivo"]
+        }
+    }
+    }
+},
+validationLevel: "strict",
+validationAction: "error"
+});
+
+db.createCollection("periodos_academicos", {
+validator: {
+    $jsonSchema: {
+    bsonType: "object",
+    required: [
+        "codigo", "nombre", "fecha_inicio", "fecha_fin", "estado"
+    ],
+    properties: {
+        codigo: { bsonType: "string" },
+        nombre: { bsonType: "string" },
+        fecha_inicio: { bsonType: "date" },
+        fecha_fin: { bsonType: "date" },
+        estado: {
+        bsonType: "string",
+        enum: ["planificado", "activo", "finalizado"]
+        }
+    }
+    }
+},
+validationLevel: "strict",
+validationAction: "error"
+});
+
+db.createCollection("grupos", {
+validator: {
+    $jsonSchema: {
+    bsonType: "object",
+    required: [
+        "codigo",
+        "asignatura_id",
+        "periodo_id",
+        "docentes",
+        "capacidad",
+        "modalidad",
+        "estado",
+        "horarios"
+    ],
+    properties: {
+        codigo: { bsonType: "string" },
+        asignatura_id: { bsonType: "objectId" },
+        periodo_id: { bsonType: "objectId" },
+        docentes: {
+        bsonType: "array",
+        items: { bsonType: "objectId" }
+        },
+        capacidad: {
+        bsonType: ["int", "long"],
+        minimum: 1
+        },
+        modalidad: {
+        bsonType: "string",
+        enum: ["presencial", "virtual", "hibrida"]
+        },
+        estado: {
+        bsonType: "string",
+        enum: ["abierto", "cerrado", "cancelado"]
+        },
+        horarios: {
+        bsonType: "array",
+        items: {
+            bsonType: "object",
+            required: [
+            "dia", "hora_inicio", "hora_fin", "aula_id"
+            ],
+            properties: {
+            dia: {
+                bsonType: "string",
+                enum: [
+                "lunes", "martes", "miercoles",
+                "jueves", "viernes", "sabado", "domingo"
+                ]
+            },
+            hora_inicio: { bsonType: "string" },
+            hora_fin: { bsonType: "string" },
+            aula_id: { bsonType: "objectId" }
+            }
+        }
+        }
+    }
+    }
+},
+validationLevel: "strict",
+validationAction: "error"
+});
+
+db.createCollection("aulas", {
+validator: {
+    $jsonSchema: {
+    bsonType: "object",
+    required: [
+        "codigo", "edificio", "capacidad", "tipo", "recursos", "estado"
+    ],
+    properties: {
+        codigo: { bsonType: "string" },
+        edificio: { bsonType: "string" },
+        capacidad: {
+        bsonType: ["int", "long"],
+        minimum: 1
+        },
+        tipo: {
+        bsonType: "string",
+        enum: ["salon", "laboratorio", "auditorio"]
+        },
+        recursos: {
+        bsonType: "array",
+        items: { bsonType: "string" }
+        },
+        estado: {
+        bsonType: "string",
+        enum: ["disponible", "ocupada", "mantenimiento"]
+        }
+    }
+    }
+},
+validationLevel: "strict",
+validationAction: "error"
+});
+
+db.createCollection("matriculas", {
+validator: {
+    $jsonSchema: {
+    bsonType: "object",
+    required: [
+        "estudiante_id", "periodo_id", "fecha", "estado", "grupos"
+    ],
+    properties: {
+        estudiante_id: { bsonType: "objectId" },
+        periodo_id: { bsonType: "objectId" },
+        fecha: { bsonType: "date" },
+        estado: {
+        bsonType: "string",
+        enum: ["activa", "cancelada", "finalizada"]
+        },
+        grupos: {
+        bsonType: "array",
+        items: {
+            bsonType: "object",
+            required: ["grupo_id", "estado"],
+            properties: {
+            grupo_id: { bsonType: "objectId" },
+            estado: {
+                bsonType: "string",
+                enum: ["inscrito", "retirado", "finalizado"]
+            }
+            }
+        }
+        }
+    }
+    }
+},
+validationLevel: "strict",
+validationAction: "error"
+});
+
+db.createCollection("evaluaciones", {
+validator: {
+    $jsonSchema: {
+    bsonType: "object",
+    required: [
+        "grupo_id", "nombre", "tipo", "porcentaje", "fecha"
+    ],
+    properties: {
+        grupo_id: { bsonType: "objectId" },
+        nombre: { bsonType: "string" },
+        tipo: {
+        bsonType: "string",
+        enum: [
+            "parcial", "examen", "tarea",
+            "proyecto", "laboratorio", "otro"
+        ]
+        },
+        porcentaje: {
+        bsonType: ["int", "long", "double", "decimal"],
+        minimum: 0,
+        maximum: 100
+        },
+        fecha: { bsonType: "date" }
+    }
+    }
+},
+validationLevel: "strict",
+validationAction: "error"
+});
+
+db.createCollection("calificaciones", {
+validator: {
+    $jsonSchema: {
+    bsonType: "object",
+    required: [
+        "estudiante_id", "evaluacion_id",
+        "grupo_id", "valor", "observacion"
+    ],
+    properties: {
+        estudiante_id: { bsonType: "objectId" },
+        evaluacion_id: { bsonType: "objectId" },
+        grupo_id: { bsonType: "objectId" },
+        valor: {
+        bsonType: ["int", "long", "double", "decimal"],
+        minimum: 0,
+        maximum: 5
+        },
+        observacion: { bsonType: "string" }
+    }
+    }
+},
+validationLevel: "strict",
+validationAction: "error"
+});
+
+db.createCollection("documentos", {
+    validator: {
+        $jsonSchema: {
+            bsonType: "object",
+            required: [
+                "titulo",
+                "tipo",
+                "descripcion",
+                "fecha_publicacion",
+                "idioma",
+                "fuente",
+                "contenido_texto",
+                "metadata"
+            ],
+            properties: {
+                titulo: {
+                    bsonType: "string"
+                },
+                tipo: {
+                    bsonType: "string"
+                },
+                descripcion: {
+                    bsonType: "string"
+                },
+                fecha_publicacion: {
+                    bsonType: "date"
+                },
+                idioma: {
+                    bsonType: "string"
+                },
+                fuente: {
+                    bsonType: "string"
+                },
+                contenido_texto: {
+                    bsonType: "string"
+                },
+                programa_id: {
+                    bsonType: "objectId"
+                },
+                facultad_id: {
+                    bsonType: "objectId"
+                },
+                ruta_archivo: {
+                    bsonType: "string"
+                },
+                metadata: {
+                    bsonType: "object",
+                    required: [
+                        "autor",
+                        "version"
+                    ],
+                    properties: {
+                        autor: {
+                            bsonType: "string"
+                        },
+                        version: {
+                            bsonType: "string"
+                        },
+                        categoria: {
+                            bsonType: "string"
+                        },
+                        etiquetas: {
+                            bsonType: "array",
+                            items: {
+                                bsonType: "string"
+                            }
+                        }
+                    }
+                },
+                imagenes: {
+                    bsonType: "array",
+                    items: {
+                        bsonType: "objectId"
+                    }
+                }
+            }
+        }
+    },
+    validationLevel: "strict",
+    validationAction: "error"
+});
+
+db.createCollection("imagenes", {
+    validator: {
+        $jsonSchema: {
+            bsonType: "object",
+            required: [
+                "doc_id",
+                "nombre",
+                "tipo",
+                "formato",
+                "ruta_archivo",
+                "descripcion",
+                "etiquetas",
+                "embedding",
+                "modelo",
+                "metadata"
+            ],
+            properties: {
+                doc_id: {
+                    bsonType: "objectId"
+                },
+                nombre: {
+                    bsonType: "string"
+                },
+                tipo: {
+                    bsonType: "string"
+                },
+                formato: {
+                    bsonType: "string"
+                },
+                ruta_archivo: {
+                    bsonType: "string"
+                },
+                descripcion: {
+                    bsonType: "string"
+                },
+                etiquetas: {
+                    bsonType: "array",
+                    items: {
+                        bsonType: "string"
+                    }
+                },
+                embedding: {
+                    bsonType: "array",
+                    minItems: 512,
+                    maxItems: 512,
+                    items: {
+                        bsonType: [
+                            "double",
+                            "int",
+                            "long",
+                            "decimal"
+                        ]
+                    }
+                },
+                modelo: {
+                    bsonType: "string"
+                },
+                metadata: {
+                    bsonType: "object",
+                    required: [
+                        "ancho",
+                        "alto"
+                    ],
+                    properties: {
+                        ancho: {
+                            bsonType: [
+                                "int",
+                                "long"
+                            ],
+                            minimum: 1
+                        },
+                        alto: {
+                            bsonType: [
+                                "int",
+                                "long"
+                            ],
+                            minimum: 1
+                        }
+                    }
+                }
+            }
+        }
+    },
+    validationLevel: "strict",
+    validationAction: "error"
+});
+
+db.createCollection("chunks", {
+    validator: {
+        $jsonSchema: {
+            bsonType: "object",
+            required: [
+                "doc_id",
+                "chunk_index",
+                "estrategia_chunking",
+                "chunk_texto",
+                "embedding",
+                "modelo",
+                "idioma",
+                "fecha",
+                "fecha_ingesta"
+            ],
+            properties: {
+                doc_id: {
+                    bsonType: "objectId"
+                },
+                chunk_index: {
+                    bsonType: [
+                        "int",
+                        "long"
+                    ],
+                    minimum: 0
+                },
+                estrategia_chunking: {
+                    bsonType: "string",
+                    enum: [
+                        "fixed-size",
+                        "sentence-aware",
+                        "semantic"
+                    ]
+                },
+                chunk_texto: {
+                    bsonType: "string"
+                },
+                embedding: {
+                    bsonType: "array",
+                    minItems: 384,
+                    maxItems: 384,
+                    items: {
+                        bsonType: [
+                            "double",
+                            "int",
+                            "long",
+                            "decimal"
+                        ]
+                    }
+                },
+                modelo: {
+                    bsonType: "string"
+                },
+                idioma: {
+                    bsonType: "string"
+                },
+                fecha: {
+                    bsonType: "date"
+                },
+                fecha_ingesta: {
+                    bsonType: "date"
+                }
+            }
+        }
+    },
+    validationLevel: "strict",
+    validationAction: "error"
+});
+
+db.createCollection("usuarios", {
+    validator: {
+        $jsonSchema: {
+            bsonType: "object",
+            required: [
+                "nombre",
+                "correo",
+                "rol",
+                "estado"
+            ],
+            properties: {
+                nombre: {
+                    bsonType: "string"
+                },
+                correo: {
+                    bsonType: "string"
+                },
+                rol: {
+                    bsonType: "string",
+                    enum: [
+                        "estudiante",
+                        "docente",
+                        "administrador"
+                    ]
+                },
+                estado: {
+                    bsonType: "string",
+                    enum: [
+                        "activo",
+                        "inactivo"
+                    ]
+                }
+            }
+        }
+    },
+    validationLevel: "strict",
+    validationAction: "error"
+});
+
+db.createCollection("consultas", {
+    validator: {
+        $jsonSchema: {
+            bsonType: "object",
+            required: [
+                "usuario_id",
+                "fecha",
+                "pregunta",
+                "estrategia_busqueda",
+                "chunks_recuperados",
+                "respuesta_generada",
+                "modelo_llm"
+            ],
+            properties: {
+                usuario_id: {
+                    bsonType: "objectId"
+                },
+                fecha: {
+                    bsonType: "date"
+                },
+                pregunta: {
+                    bsonType: "string"
+                },
+                estrategia_busqueda: {
+                    bsonType: "string",
+                    enum: [
+                        "vectorial",
+                        "texto",
+                        "hibrida"
+                    ]
+                },
+                chunks_recuperados: {
+                    bsonType: "array",
+                    items: {
+                        bsonType: "objectId"
+                    }
+                },
+                respuesta_generada: {
+                    bsonType: "string"
+                },
+                modelo_llm: {
+                    bsonType: "string"
+                }
+            }
+        }
+    },
+    validationLevel: "strict",
+    validationAction: "error"
+});
+
+/* CREAR INDICES */
+db.facultades.createIndex(
+    { codigo: 1 },
+    {
+        unique: true,
+        name: "uq_facultades_codigo"
+    }
+);
+
+db.programas.createIndex(
+    { codigo: 1 },
+    {
+        unique: true,
+        name: "uq_programas_codigo"
+    }
+);
+
+db.programas.createIndex(
+    { facultad_id: 1 },
+    {
+        name: "idx_programas_facultad"
+    }
+);
+
+db.planes_estudio.createIndex(
+    { programa_id: 1, version: 1 },
+    {
+        unique: true,
+        name: "uq_planes_programa_version"
+    }
+);
+
+db.asignaturas.createIndex(
+    { codigo: 1 },
+    {
+        unique: true,
+        name: "uq_asignaturas_codigo"
+    }
+);
+
+db.estudiantes.createIndex(
+    { codigo_estudiante: 1 },
+    {
+        unique: true,
+        name: "uq_estudiantes_codigo"
+    }
+);
+
+db.estudiantes.createIndex(
+    { programa_id: 1 },
+    {
+        name: "idx_estudiantes_programa"
+    }
+);
+
+db.docentes.createIndex(
+    { codigo: 1 },
+    {
+        unique: true,
+        name: "uq_docentes_codigo"
+    }
+);
+
+db.periodos_academicos.createIndex(
+    { codigo: 1 },
+    {
+        unique: true,
+        name: "uq_periodos_codigo"
+    }
+);
+
+db.grupos.createIndex(
+    { asignatura_id: 1, periodo_id: 1 },
+    {
+        name: "idx_grupos_asignatura_periodo"
+    }
+);
+
+db.grupos.createIndex(
+    { periodo_id: 1, estado: 1 },
+    {
+        name: "idx_grupos_periodo_estado"
+    }
+);
+
+db.aulas.createIndex(
+    { codigo: 1 },
+    {
+        unique: true,
+        name: "uq_aulas_codigo"
+    }
+);
+
+db.matriculas.createIndex(
+    { estudiante_id: 1, periodo_id: 1 },
+    {
+        unique: true,
+        name: "uq_matriculas_estudiante_periodo"
+    }
+);
+
+db.evaluaciones.createIndex(
+    { grupo_id: 1 },
+    {
+        name: "idx_evaluaciones_grupo"
+    }
+);
+
+db.calificaciones.createIndex(
+    { estudiante_id: 1, evaluacion_id: 1 },
+    {
+        unique: true,
+        name: "uq_calificaciones_estudiante_evaluacion"
+    }
+);
+
+db.calificaciones.createIndex(
+    { estudiante_id: 1 },
+    {
+        name: "idx_calificaciones_estudiante"
+    }
+);
+
+db.documentos.createIndex(
+    { fecha_publicacion: 1, idioma: 1 },
+    {
+        name: "idx_documentos_fecha_idioma"
+    }
+);
+
+db.documentos.createIndex(
+    { tipo: 1 },
+    {
+        name: "idx_documentos_tipo"
+    }
+);
+
+db.documentos.createIndex(
+    { programa_id: 1 },
+    {
+        name: "idx_documentos_programa"
+    }
+);
+
+db.imagenes.createIndex(
+    { doc_id: 1 },
+    {
+        name: "idx_imagenes_documento"
+    }
+);
+
+db.chunks.createIndex(
+    {
+        doc_id: 1,
+        estrategia_chunking: 1,
+        chunk_index: 1
+    },
+    {
+        unique: true,
+        name: "uq_chunks_documento_estrategia_indice"
+    }
+);
+
+db.usuarios.createIndex(
+    { correo: 1 },
+    {
+        unique: true,
+        name: "uq_usuarios_correo"
+    }
+);
+
+db.consultas.createIndex(
+    {
+        usuario_id: 1,
+        fecha: -1
+    },
+    {
+        name: "idx_consultas_usuario_fecha"
+    }
+);
+
+db.documentos.createIndex(
+    { contenido_texto: "text" },
+    {
+        name: "idx_texto",
+        default_language: "spanish"
+    }
+);
+
+/* CREAR INDICES DE BUSQUEDA */
+db.chunks.createSearchIndex(
+    "vector_index",
+    "vectorSearch",
+    {
+        fields: [
+            {
+                type: "vector",
+                path: "embedding",
+                numDimensions: 384,
+                similarity: "cosine"
+            },
+            {
+                type: "filter",
+                path: "idioma"
+            },
+            {
+                type: "filter",
+                path: "fecha"
+            },
+            {
+                type: "filter",
+                path: "estrategia_chunking"
+            }
+        ]
+    }
+);
+
+db.imagenes.createSearchIndex(
+    "vector_index_img",
+    "vectorSearch",
+    {
+        fields: [
+            {
+                type: "vector",
+                path: "embedding",
+                numDimensions: 512,
+                similarity: "cosine"
+            }
+        ]
+    }
+);
